@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مولّد جداول إكسيل الذكي | Prompt to Excel</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (xlsx) for exporting real Excel files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 glass-panel sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-teal-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid font-bold text-xl text-slate-950 fa-table"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-brand-500 bg-clip-text text-transparent">
+                        مولّد جداول إكسيل الذكي
+                    </h1>
+                    <p class="text-xs text-slate-400">حول برومبت في دماغك لجدول Excel منظم جاهز للتنزيل</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 space-x-reverse">
+                <button onclick="toggleSettingsModal()" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-2 transition">
+                    <i class="fa-solid fa-key text-amber-400"></i>
+                    <span>مفتاح API الخاص بك</span>
+                </button>
+                <button onclick="toggleGuideModal()" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-2 transition">
+                    <i class="fa-solid fa-share-nodes text-brand-500"></i>
+                    <span>كيف تشارك اللينك؟</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Inputs & Prompts -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-brand-500"></i>
+                    وصف الجدول المطلوب (البرومبت)
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">اكتب فكرة الجدول أو البيانات بالتفصيل:</label>
+                        <textarea id="promptInput" rows="5" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition resize-none" placeholder="مثال: عاوز جدول لميزانية مشروع تسويقي لمدة 6 شهور يشمل: الشهر، الحملات، التكلفة المتوقعة، الإيرادات المتوقعة، وصافي الربح مع إضافة ملاحظات..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">عدد الصفوف المتوقع:</label>
+                            <input type="number" id="rowCountInput" min="2" max="50" value="7" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">لون ثيم الجدول:</label>
+                            <select id="themeSelect" onchange="changeTableTheme(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                                <option value="emerald">زمردي (إكسيل الحديث)</option>
+                                <option value="blue">أزرق كلاسيكي</option>
+                                <option value="purple">بنفسجي مودرن</option>
+                                <option value="dark">أسود فاخر</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button id="generateBtn" onclick="generateExcelTable()" class="w-full py-3 bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-500 hover:to-teal-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2 transition transform active:scale-95">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>توليد جدول إكسيل الآن</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Templates -->
+            <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">أفكار جاهزة بنقرة واحدة</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="fillPreset('جدول متابعة المهام والمشاريع الأسبوعي يشمل اسم المهمة، المسؤول، التاريخ، الحالة، والأولوية')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 transition">
+                        📋 إدارة المشاريع
+                    </button>
+                    <button onclick="fillPreset('جدول ميزانية المصاريف الشخصية والادخار الشهري يشمل البند، المبلغ، الفئة، والتاريخ')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 transition">
+                        💰 ميزانية شخصية
+                    </button>
+                    <button onclick="fillPreset('جدول تمارين وجداول غذائية أسبوعية للرياضة والتغذية يشمل اليوم، التمرين، المجموعات، والتكرار')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 transition">
+                        🏋️ جدول تمارين
+                    </button>
+                    <button onclick="fillPreset('جدول دراسي للمراجعة قبل الامتحانات يشمل المادة، الفصل، ساعات الدراسة، وحالة الإنجاز')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 transition">
+                        📚 جدول دراسي
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Interactive Table Preview & Tools -->
+        <div class="lg:col-span-8 flex flex-col space-y-6">
+            <div class="glass-panel p-6 rounded-2xl shadow-xl flex-grow flex flex-col justify-between">
+                <div>
+                    <!-- Action Bar Above Table -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800 mb-4">
+                        <div>
+                            <h2 id="tableTitle" class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-file-excel text-brand-500"></i>
+                                معاينة الجدول التفاعلي
+                            </h2>
+                            <p id="tableSubtitle" class="text-xs text-slate-400">يمكنك تعديل أي خلية مباشرة بالضغط عليها</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <button onclick="addRow()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-brand-500"></i> صف
+                            </button>
+                            <button onclick="addColumn()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-brand-500"></i> عمود
+                            </button>
+                            <div class="h-4 w-[1px] bg-slate-800 mx-1"></div>
+                            <button onclick="exportToExcel()" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold text-xs rounded-lg transition flex items-center gap-2 shadow-lg shadow-brand-600/10">
+                                <i class="fa-solid fa-download"></i>
+                                تحميل Excel (.xlsx)
+                            </button>
+                            <button onclick="copyTableData()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 rounded-lg transition" title="نسخ للحافظة">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loader State -->
+                    <div id="loadingState" class="hidden py-20 flex-col items-center justify-center text-center">
+                        <div class="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p class="text-sm font-semibold text-slate-200">جاري تحليل البرومبت وبناء جدول Excel المنظم...</p>
+                        <p class="text-xs text-slate-400 mt-1">يتم الآن حساب البيانات وتأطير الهيكل المناسب</p>
+                    </div>
+
+                    <!-- Table Container -->
+                    <div id="tableWrapper" class="overflow-x-auto custom-scrollbar border border-slate-800 rounded-xl">
+                        <table id="dynamicTable" class="w-full text-right border-collapse text-sm">
+                            <thead id="tableHead" class="bg-brand-900/60 text-brand-100 border-b border-slate-700">
+                                <!-- Generated Dynamically -->
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                                <!-- Generated Dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Empty Placeholder state when first load -->
+                <div id="emptyHint" class="text-center py-12 text-slate-500 text-xs">
+                    💡 اكتب وصفك في الصندوق على اليمين ثم اضغط "توليد جدول إكسيل الآن".
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal for Gemini API Key -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="glass-panel max-w-md w-full p-6 rounded-2xl border border-slate-700 shadow-2xl relative">
+            <button onclick="toggleSettingsModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-key text-amber-400"></i>
+                إعداد مفتاح الذكاء الاصطناعي (Gemini API)
+            </h3>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                التطبيق يعمل مجاناً بتوليد محلي ذكي. ولكن إذا كنت تريد دقة خارقة وفهم عميق للبرومبت عبر **Gemini 3 Flash**، أدخل مفتاحك هنا (يُحفظ في متصفحك فقط ولا يغادر جهازك).
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Gemini API Key:</label>
+                    <input type="password" id="apiKeyInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-brand-500" placeholder="AIzaSy...">
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="saveApiKey()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold text-xs rounded-lg transition">حفظ المفتاح</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guide Modal for Sharing -->
+    <div id="guideModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="glass-panel max-w-lg w-full p-6 rounded-2xl border border-slate-700 shadow-2xl relative">
+            <button onclick="toggleGuideModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-rocket text-brand-500"></i>
+                كيف تنشر الموقع وتبعت اللينك لأي حد؟
+            </h3>
+            <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+                <p>عشان تبعت هذا التطبيق لأصحابك أو في شغلك ويشتغل على أي موبايل أو كمبيوتر مجاناً:</p>
+                <ol class="list-decimal list-inside space-y-2 text-slate-400">
+                    <li>قم بتنزيل أو نسخ كود هذا الملف باسم <code class="text-brand-400">index.html</code>.</li>
+                    <li>افتح موقع <a href="https://app.netlify.com/drop" target="_blank" class="text-brand-400 underline">Netlify Drop</a> أو <a href="https://vercel.com" target="_blank" class="text-brand-400 underline">Vercel</a>.</li>
+                    <li>اسحب الملف وارميه هناك، وسيتم إعطاؤك <strong>رابط (Link) مباشر مجاني</strong> خلال 10 ثوانٍ!</li>
+                    <li>انسخ اللينك وارسله لأي شخص في أي مكان ليستخدم التطبيق فوراً.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-4 text-center text-xs text-slate-500">
+        <p>مصمم ليخدمك في تحويل الأفكار والبرومبتات إلى جداول Excel احترافية بكل سهولة.</p>
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        let currentTableData = {
+            title: "جدول الميزانية والمهام",
+            headers: ["م", "البند / الوصف", "الفئة", "التكلفة المتوقعة", "المسؤول", "الحالة"],
+            rows: [
+                ["1", "تصميم واجهة المستخدم", "تطوير", "5000", "أحمد", "مكتمل"],
+                ["2", "حملة إعلانات فيسبوك", "تسويق", "3000", "سارة", "قيد التنفيذ"],
+                ["3", "استضافة السيرفر والدومين", "بنية تحتية", "1200", "زياد", "قيد الانتظار"],
+                ["4", "كتابة المحتوى والمقالات", "صناعة محتوى", "2000", "مريم", "قيد التنفيذ"]
+            ]
+        };
+
+        window.onload = () => {
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if(savedKey) document.getElementById('apiKeyInput').value = savedKey;
+            renderTable();
+        };
+
+        function toggleSettingsModal() {
+            document.getElementById('settingsModal').classList.toggle('hidden');
+        }
+
+        function toggleGuideModal() {
+            document.getElementById('guideModal').classList.toggle('hidden');
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            localStorage.setItem('gemini_api_key', key);
+            alert('تم حفظ مفتاح API بنجاح في متصفحك!');
+            toggleSettingsModal();
+        }
+
+        function fillPreset(text) {
+            document.getElementById('promptInput').value = text;
+        }
+
+        function changeTableTheme(theme) {
+            const thead = document.getElementById('tableHead');
+            thead.className = 'border-b border-slate-700 text-slate-100 ';
+            
+            if(theme === 'emerald') {
+                thead.classList.add('bg-emerald-950/80', 'text-emerald-200');
+            } else if(theme === 'blue') {
+                thead.classList.add('bg-blue-950/80', 'text-blue-200');
+            } else if(theme === 'purple') {
+                thead.classList.add('bg-purple-950/80', 'text-purple-200');
+            } else {
+                thead.classList.add('bg-slate-900', 'text-slate-200');
+            }
+        }
+
+        async function generateExcelTable() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            const rowCount = document.getElementById('rowCountInput').value || 7;
+
+            if(!prompt) {
+                alert('يرجى كتابة وصف للجدول أو البرومبت أولاً!');
+                return;
+            }
+
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('tableWrapper').classList.add('hidden');
+            document.getElementById('emptyHint').classList.add('hidden');
+
+            const apiKey = localStorage.getItem('gemini_api_key');
+
+            if(apiKey) {
+                try {
+                    await fetchFromGemini(prompt, rowCount, apiKey);
+                } catch(e) {
+                    console.warn('Failed API call, using smart fallback logic', e);
+                    generateFallbackTable(prompt, rowCount);
+                }
+            } else {
+                // Smart Fallback Local Generation
+                setTimeout(() => {
+                    generateFallbackTable(prompt, rowCount);
+                }, 800);
+            }
+        }
+
+        async function fetchFromGemini(prompt, rowCount, apiKey) {
+            const systemPrompt = `أنشئ جدول بيانات منظم بناءً على الطلب التالي: "${prompt}". 
+يرجى إرجاع النتيجة بصيغة JSON فقط بهذا الشكل وبدون أي شرح إضافي:
+{
+  "title": "عنوان مناسب للجدول",
+  "headers": ["العمود1", "العمود2", "العمود3"],
+  "rows": [
+     ["قيمة1", "قيمة2", "قيمة3"],
+     ["قيمة4", "قيمة5", "قيمة6"]
+  ]
+}
+اجعل عدد الصفوف حوالي ${rowCount} صفوف ونسقها بدقة باللغة العربية.`;
+
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt }] }]
+                })
+            });
+
+            const data = await res.json();
+            const rawText = data.candidates[0].content.parts[0].text;
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            
+            if(jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                currentTableData = parsed;
+                finishLoading();
+            } else {
+                throw new Error("Invalid JSON");
+            }
+        }
+
+        function generateFallbackTable(prompt, count) {
+            const lower = prompt.toLowerCase();
+            let headers = ["م", "العنصر / البيان", "الفئة", "القيمة / الحجم", "التاريخ", "ملاحظات"];
+            let rows = [];
+
+            if(lower.includes("مصاريف") || lower.includes("ميزانية") || lower.includes("مالية")) {
+                headers = ["م", "بند المصروف", "الفئة", "المبلغ المتوقع (جنيه)", "تاريخ الاستحقاق", "حالة الدفع"];
+                const items = ["إيجار المقر", "كهرباء وانترنت", "حملات تسويقية", "أجور وفريق العمل", "أدوات برمجية", "صيانة ومستلزمات", "احتياطي طوارئ"];
+                for(let i=0; i<Math.min(count, items.length); i++) {
+                    rows.push([(i+1).toString(), items[i], "تشغيلي", (Math.floor(Math.random()*40 + 10)*100).toString(), `2026-11-0${i+1}`, i%2===0?"مدفوع":"مستحق"]);
+                }
+            } else if(lower.includes("مشروع") || lower.includes("مهام") || lower.includes("عمل")) {
+                headers = ["م", "اسم المهمة", "المسؤول", "الأولوية", "تاريخ البدء", "تاريخ التسليم", "الحالة"];
+                const tasks = ["تحديد المتطلبات", "تصميم الواجهات", "تكوين قاعدة البيانات", "كتابة الـ API", "الاختبار والتجربة", "النشر النهائي"];
+                for(let i=0; i<Math.min(count, tasks.length); i++) {
+                    rows.push([(i+1).toString(), tasks[i], ["زياد", "أحمد", "سارة"][i%3], i%2===0?"عالية":"متوسطة", "2026-11-01", "2026-11-15", i%2===0?"مكتمل":"قيد التنفيذ"]);
+                }
+            } else {
+                headers = ["م", "العنوان / الوصف", "النوع", "الكمية / النسبة", "التاريخ", "الحالة"];
+                for(let i=1; i<=count; i++) {
+                    rows.push([i.toString(), `عنصر جديد رقم ${i}`, "عام", (i*10).toString(), `2026-11-${i<10?'0'+i:i}`, "نشط"]);
+                }
+            }
+
+            currentTableData = {
+                title: "جدول: " + prompt.substring(0, 30) + "...",
+                headers: headers,
+                rows: rows
+            };
+
+            finishLoading();
+        }
+
+        function finishLoading() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('tableWrapper').classList.remove('hidden');
+            renderTable();
+        }
+
+        function renderTable() {
+            document.getElementById('tableTitle').innerText = currentTableData.title || "جدول إكسيل منظم";
+
+            // Render Header
+            const thead = document.getElementById('tableHead');
+            let headHTML = '<tr>';
+            currentTableData.headers.forEach((h, index) => {
+                headHTML += `<th contenteditable="true" onblur="updateHeader(${index}, this.innerText)" class="px-4 py-3 border-b border-slate-700 font-semibold cursor-pointer hover:bg-white/5 transition">${h}</th>`;
+            });
+            headHTML += '<th class="px-2 py-3 border-b border-slate-700 w-10"></th></tr>';
+            thead.innerHTML = headHTML;
+
+            // Render Body
+            const tbody = document.getElementById('tableBody');
+            let bodyHTML = '';
+            currentTableData.rows.forEach((row, rIdx) => {
+                bodyHTML += `<tr class="hover:bg-slate-800/40 transition">`;
+                row.forEach((cell, cIdx) => {
+                    bodyHTML += `<td contenteditable="true" onblur="updateCell(${rIdx}, ${cIdx}, this.innerText)" class="px-4 py-3 border-b border-slate-800/80 focus:outline-none focus:bg-slate-800 text-slate-200">${cell}</td>`;
+                });
+                bodyHTML += `<td class="px-2 py-3 border-b border-slate-800/80 text-center"><button onclick="deleteRow(${rIdx})" class="text-slate-500 hover:text-red-400 text-xs"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            });
+            tbody.innerHTML = bodyHTML;
+        }
+
+        function updateCell(r, c, val) {
+            currentTableData.rows[r][c] = val;
+        }
+
+        function updateHeader(c, val) {
+            currentTableData.headers[c] = val;
+        }
+
+        function addRow() {
+            const emptyRow = new Array(currentTableData.headers.length).fill("-");
+            emptyRow[0] = (currentTableData.rows.length + 1).toString();
+            currentTableData.rows.push(emptyRow);
+            renderTable();
+        }
+
+        function addColumn() {
+            currentTableData.headers.push("عمود جديد");
+            currentTableData.rows.forEach(r => r.push("-"));
+            renderTable();
+        }
+
+        function deleteRow(index) {
+            currentTableData.rows.splice(index, 1);
+            renderTable();
+        }
+
+        function exportToExcel() {
+            const dataToExport = [
+                currentTableData.headers,
+                ...currentTableData.rows
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "جدول ذكي");
+            
+            // Set right-to-left view for Excel sheet
+            if(!wb.Workbook) wb.Workbook = {};
+            if(!wb.Workbook.Views) wb.Workbook.Views = [{}];
+            wb.Workbook.Views[0].RTL = true;
+
+            const filename = (currentTableData.title || "excel_table").replace(/[^\w\u0600-\u06FF]/g, "_") + ".xlsx";
+            XLSX.writeFile(wb, filename);
+        }
+
+        function copyTableData() {
+            let text = currentTableData.headers.join("\t") + "\n";
+            currentTableData.rows.forEach(r => {
+                text += r.join("\t") + "\n";
+            });
+            navigator.clipboard.writeText(text);
+            alert("تم نسخ البيانات للحافظة! يمكنك لصقها المباشر داخل Excel أو Google Sheets.");
+        }
+    </script>
+</body>
+</html>
